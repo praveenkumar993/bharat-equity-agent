@@ -79,7 +79,11 @@ def node_synthesize(state: StockState) -> StockState:
     state["events"].append({"agent": "Synthesizer", "status": "running", "message": "Synthesizing all research into investment verdict..."})
 
     try:
-        synthesis = run_synthesizer(ticker, state["agent_outputs"])
+        synthesis = run_synthesizer(
+            ticker,
+            state["agent_outputs"],
+            market_data=state.get("market_data_raw", {})  # pass real price data
+        )
         state["synthesis"] = synthesis
         state["final_verdict"] = synthesis["verdict"]
         state["final_confidence"] = synthesis["confidence"]

@@ -23,25 +23,36 @@ def call_groq(system: str, user: str, model: str = "llama-3.3-70b-versatile") ->
     return response.choices[0].message.content
 
 
-def run_synthesizer(ticker: str, agent_outputs: dict) -> dict:
+def run_synthesizer(ticker: str, agent_outputs: dict, market_data: dict = None) -> dict:
     """
     Synthesizer Agent — reads all 6 agent outputs and produces
     a structured BUY/HOLD/SELL verdict with confidence score.
     """
+    current_price = market_data.get("current_price", 0) if market_data else 0
+    week_52_high = market_data.get("week_52_high", 0) if market_data else 0
+    week_52_low = market_data.get("week_52_low", 0) if market_data else 0
+
     system = """You are a senior portfolio manager at a top Mumbai hedge fund.
     You receive research from 6 specialist agents and must synthesize it into
     a final investment verdict. Be decisive, structured, and professional.
+    Use ONLY the actual current price provided — never invent prices.
+    Price target must be within 10-20% of current price.
+    Stop loss must be 5-8% below current price.
     
     Output EXACTLY in this format:
     VERDICT: [BUY or HOLD or SELL]
-    CONFIDENCE: [number between 50 and 95]%
-    PRICE_TARGET: [target price number]
-    STOP_LOSS: [stop loss price number]
+    CONFIDENCE: [number between 50 and 90]%
+    PRICE_TARGET: [realistic target within 15% of current price]
+    STOP_LOSS: [5-8% below current price]
     SUMMARY: [2-3 sentences explaining the verdict]
     BULL_CASE: [one sentence — best case scenario]
     BEAR_CASE: [one sentence — worst case scenario]"""
 
-    user = f"""Synthesize this research for {ticker} and give final verdict:
+    user = f"""Synthesize this research for {ticker} and give final verdict.
+
+CURRENT PRICE: ₹{current_price}
+52-WEEK HIGH: ₹{week_52_high}
+52-WEEK LOW: ₹{week_52_low}
 
 MARKET DATA ANALYSIS:
 {agent_outputs.get('market_data', '')}
@@ -59,7 +70,9 @@ TECHNICAL ANALYSIS:
 {agent_outputs.get('technical', '')}
 
 RISK ASSESSMENT:
-{agent_outputs.get('risk', '')}"""
+{agent_outputs.get('risk', '')}
+
+Remember: Price target must be realistic based on current price of ₹{current_price}."""
 
     raw = call_groq(system, user)
 
@@ -85,24 +98,33 @@ RISK ASSESSMENT:
         elif line.startswith("CONFIDENCE:"):
             try:
                 confidence = int(''.join(filter(str.isdigit, line.split(":")[1])))
+                confidence = max(50, min(90, confidence))
             except:
                 confidence = 60
         elif line.startswith("PRICE_TARGET:"):
             try:
                 price_target = float(''.join(c for c in line.split(":")[1] if c.isdigit() or c == '.'))
             except:
-                price_target = None
+                price_target = round(current_price * 1.12, 2) if current_price else None
         elif line.startswith("STOP_LOSS:"):
             try:
                 stop_loss = float(''.join(c for c in line.split(":")[1] if c.isdigit() or c == '.'))
             except:
-                stop_loss = None
+                stop_loss = round(current_price * 0.93, 2) if current_price else None
         elif line.startswith("SUMMARY:"):
             summary = line.replace("SUMMARY:", "").strip()
         elif line.startswith("BULL_CASE:"):
             bull_case = line.replace("BULL_CASE:", "").strip()
         elif line.startswith("BEAR_CASE:"):
             bear_case = line.replace("BEAR_CASE:", "").strip()
+
+    # Sanity check — if price_target is wildly wrong, fix it
+    if price_target and current_price:
+        if price_target > current_price * 2 or price_target < current_price * 0.5:
+            price_target = round(current_price * 1.12, 2)
+    if stop_loss and current_price:
+        if stop_loss > current_price or stop_loss < current_price * 0.5:
+            stop_loss = round(current_price * 0.93, 2)
 
     return {
         "verdict": verdict,
@@ -114,7 +136,6 @@ RISK ASSESSMENT:
         "bear_case": bear_case,
         "raw": raw,
     }
-
 
 def run_critic(ticker: str, synthesis: dict, agent_outputs: dict) -> dict:
     """
