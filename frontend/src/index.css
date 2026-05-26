@@ -1,3 +1,81 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  --green: #00C896;
+  --green-dim: #00C89620;
+  --red: #FF4D4D;
+  --red-dim: #FF4D4D20;
+  --amber: #F5A623;
+  --amber-dim: #F5A62320;
+  --bg-primary: #0A0E1A;
+  --bg-secondary: #0F1524;
+  --bg-card: #141B2D;
+  --bg-card-hover: #1A2235;
+  --border: #1E2A40;
+  --border-light: #243046;
+  --text-primary: #E8EDF5;
+  --text-secondary: #8896B0;
+  --text-tertiary: #4A5568;
+  --accent: #3B82F6;
+  --accent-dim: #3B82F615;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'DM Sans', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  margin: 0;
+}
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 2px; }
+
+.mono { font-family: 'DM Mono', monospace; }
+
+.glass {
+  background: rgba(20, 27, 45, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+}
+
+.glow-green { box-shadow: 0 0 20px rgba(0, 200, 150, 0.15); }
+.glow-red { box-shadow: 0 0 20px rgba(255, 77, 77, 0.15); }
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+@keyframes slide-up {
+  from { transform: translateY(8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-slide-up { animation: slide-up 0.3s ease forwards; }
+.animate-fade-in { animation: fade-in 0.4s ease forwards; }
+
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-card-hover) 50%, var(--bg-card) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 6px;
+}
