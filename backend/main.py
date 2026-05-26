@@ -166,44 +166,135 @@ class ChatRequest(BaseModel):
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
     """
-    Chatbot endpoint — answers questions using cached analysis context.
-    No new API calls needed for follow-up questions.
+    Finance-only chatbot endpoint.
+    Uses cached stock analysis context.
     """
+
     from agents.synthesis_agents import call_groq
 
+    finance_keywords = [
+        'stock', 'price', 'buy', 'sell', 'hold', 'verdict', 'target',
+        'loss', 'risk', 'fundamentals', 'revenue', 'profit', 'pe',
+        'eps', 'rsi', 'macd', 'sentiment', 'news', 'market',
+        'invest', 'share', 'equity', 'technical', 'support',
+        'resistance', 'sma', 'bollinger', 'confidence',
+        'analyst', 'earnings', 'dividend', 'beta',
+        'volume', 'chart', 'trend', 'bearish',
+        'bullish', 'analysis', 'portfolio',
+        'return', 'growth', 'debt', 'cashflow'
+    ]
+
+    # Add ticker variations
+    finance_keywords.extend([
+        request.ticker.lower(),
+        request.ticker.lower().replace(".ns", ""),
+        request.ticker.lower().replace(".bo", "")
+    ])
+
+    question_lower = request.question.lower()
+
+    is_finance_question = any(
+        kw in question_lower
+        for kw in finance_keywords
+    )
+
+    # Reject Non-Finance Questions
+    if not is_finance_question:
+        return {
+            "success": True,
+            "answer": (
+                f"I'm a stock research assistant focused only on "
+                f"{request.ticker}. I can answer questions about "
+                f"price, technicals, fundamentals, risks, sentiment, "
+                f"targets, and market analysis."
+            ),
+            "ticker": request.ticker
+        }
+
+
+    # Fetch Cached Analysis
     cached = session_store.get(request.ticker)
 
     if cached:
         context = f"""
 Ticker: {request.ticker}
-Verdict: {cached.get('final_verdict')} with {cached.get('final_confidence')}% confidence
 
-Market Data: {cached.get('market_data_raw', {})}
-Indicators: {cached.get('indicators_raw', {})}
+Verdict:
+{cached.get('final_verdict')}
+with {cached.get('final_confidence')}% confidence
+
+Market Data:{cached.get('market_data_raw', {})}
+
+Indicators:{cached.get('indicators_raw', {})}
 
 Agent Analysis Summary:
-Market: {cached.get('agent_outputs', {}).get('market_data', '')[:300]}
-Sentiment: {cached.get('agent_outputs', {}).get('sentiment', '')[:200]}
-Fundamentals: {cached.get('agent_outputs', {}).get('fundamentals', '')[:300]}
-Technical: {cached.get('agent_outputs', {}).get('technical', '')[:200]}
-Risk: {cached.get('agent_outputs', {}).get('risk', '')[:200]}
 
-Synthesis: {cached.get('synthesis', {}).get('summary', '')}
-Critic Note: {cached.get('critic', {}).get('critic_note', '')}
+Market:{cached.get('agent_outputs', {}).get('market_data', '')[:300]}
+
+Sentiment:{cached.get('agent_outputs', {}).get('sentiment', '')[:200]}
+
+Fundamentals:{cached.get('agent_outputs', {}).get('fundamentals', '')[:300]}
+
+Technical:{cached.get('agent_outputs', {}).get('technical', '')[:200]}
+
+Risk:{cached.get('agent_outputs', {}).get('risk', '')[:200]}
+
+Synthesis:{cached.get('synthesis', {}).get('summary', '')}
+
+Critic Note:{cached.get('critic', {}).get('critic_note', '')}
 """
     else:
-        context = f"Stock ticker: {request.ticker}. No cached analysis available yet."
+        context = (
+            f"Stock ticker: {request.ticker}. "
+            f"No cached analysis available yet. "
+            f"Run the analysis first."
+        )
 
-    system = """You are a helpful stock research assistant for Indian and US markets.
-    Answer questions about the stock based on the analysis context provided.
-    Be concise, specific, and use actual numbers from the context.
-    If asked about price targets, stop loss, or risks — use the exact data from context.
-    Max 150 words per answer."""
 
-    user = f"Context:\n{context}\n\nQuestion: {request.question}"
+    # System Prompt
+    system = f"""
+You are a stock research assistant ONLY for {request.ticker}.
 
+You ONLY answer questions related to:
+- stock price
+- technical analysis
+- fundamentals
+- risks
+- market sentiment
+- support/resistance
+- targets
+- stop loss
+- verdict
+- earnings
+- financial news
+
+If the user asks anything unrelated to stocks or finance,
+politely decline and redirect them back to stock-related topics.
+
+Use actual values from the context whenever available.
+
+Keep responses concise and under 150 words.
+"""
+
+    user = (
+        f"Context:\n{context}\n\n"
+        f"Question about {request.ticker}: "
+        f"{request.question}"
+    )
+
+
+    # Generate Response
     try:
         answer = call_groq(system, user)
-        return {"success": True, "answer": answer, "ticker": request.ticker}
+
+        return {
+            "success": True,
+            "answer": answer,
+            "ticker": request.ticker
+        }
+
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return {
+            "success": False,
+            "error": str(e)
+        }
