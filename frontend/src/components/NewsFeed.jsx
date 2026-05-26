@@ -25,7 +25,7 @@ export default function NewsFeed({ news, loading }) {
   const sentimentScore = ((positiveCount / news.length) * 100).toFixed(0);
 
   return (
-    <div className="rounded-2xl p-5 bg-[var(--bg-card)] border border-border animate-slide-up">
+    <div className="rounded-2xl p-5 bg-[var(--bg-card)] border border-border animate-slide-up min-h-[620px] flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-[var(--text-primary)]">News & Sentiment</h3>
         <span className="text-xs text-[var(--text-tertiary)]">{news.length} articles</span>
@@ -49,7 +49,7 @@ export default function NewsFeed({ news, loading }) {
       </div>
 
       {/* Articles */}
-      <div className="space-y-2">
+      <div className="space-y-2 flex-grow">
         {news.map((article, i) => {
           const sent = getSentiment(article.title, article.content || '');
           return (
