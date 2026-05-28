@@ -10,6 +10,8 @@ import Chatbot from './components/Chatbot';
 import { fetchStockData, fetchNews, createWebSocket, POPULAR_TICKERS } from './lib/api';
 
 export default function App() {
+  const [theme, setTheme] = useState('dark');
+  useEffect(() => { document.documentElement.setAttribute('data-theme', theme); }, [theme]);
   const [ticker, setTicker] = useState('');
   const [stockData, setStockData] = useState(null);
   const [news, setNews] = useState([]);
@@ -97,7 +99,7 @@ export default function App() {
 
   return (
     <div style={{ background: 'var(--bg-primary)', minHeight: '100vh' }}>
-      <TopBar onSearch={analyze} currentTicker={ticker} />
+      <TopBar onSearch={analyze} currentTicker={ticker} theme={theme} onThemeToggle={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} />
 
       <div className="max-w-[1400px] mx-auto px-4 lg:px-6 py-6">
 
