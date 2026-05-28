@@ -7,6 +7,7 @@ import NewsFeed from './components/NewsFeed';
 import VerdictCard from './components/VerdictCard';
 import AgentFeed from './components/AgentFeed';
 import Chatbot from './components/Chatbot';
+import Heatmap from './components/Heatmap';
 import { fetchStockData, fetchNews, createWebSocket, POPULAR_TICKERS } from './lib/api';
 
 export default function App() {
@@ -27,13 +28,11 @@ export default function App() {
   const analyze = useCallback(async (t) => {
     const sym = t.trim().toUpperCase();
 
-    // If tab already exists just switch to it
     if (tabs.find(tab => tab.ticker === sym)) {
       setActiveTab(sym);
       return;
     }
 
-    // Max 4 tabs — drop oldest
     setTabs(prev => {
       const next = prev.length >= 4 ? prev.slice(1) : prev;
       return [...next, {
@@ -50,25 +49,18 @@ export default function App() {
     });
     setActiveTab(sym);
 
-    // Fetch static market data immediately
     try {
       const [stockRes, newsRes] = await Promise.all([
         fetchStockData(sym),
         fetchNews(sym),
       ]);
-      if (stockRes.success) {
-        updateTab(sym, { stockData: stockRes, loadingStock: false });
-      } else {
-        updateTab(sym, { error: 'Failed to fetch market data.', loadingStock: false });
-      }
-      if (newsRes.success) {
-        updateTab(sym, { news: newsRes.news || [] });
-      }
+      if (stockRes.success) updateTab(sym, { stockData: stockRes, loadingStock: false });
+      else updateTab(sym, { error: 'Failed to fetch market data.', loadingStock: false });
+      if (newsRes.success) updateTab(sym, { news: newsRes.news || [] });
     } catch {
       updateTab(sym, { error: 'Failed to fetch market data. Check the ticker.', loadingStock: false });
     }
 
-    // Start agent pipeline via WebSocket
     try {
       const ws = createWebSocket(sym);
 
@@ -103,7 +95,7 @@ export default function App() {
         }
 
         if (data.type === 'complete') updateTab(sym, { analyzing: false });
-        if (data.type === 'error') updateTab(sym, { error: data.message, analyzing: false });
+        if (data.type === 'error')    updateTab(sym, { error: data.message, analyzing: false });
       };
 
       ws.onerror = () => updateTab(sym, { error: 'WebSocket connection failed. Make sure backend is running on port 8000.', analyzing: false });
@@ -117,13 +109,10 @@ export default function App() {
   const closeTab = (sym) => {
     const remaining = tabs.filter(t => t.ticker !== sym);
     setTabs(remaining);
-    if (activeTab === sym) {
-      setActiveTab(remaining[remaining.length - 1]?.ticker || null);
-    }
+    if (activeTab === sym) setActiveTab(remaining[remaining.length - 1]?.ticker || null);
   };
 
-  // Active tab data
-  const active = tabs.find(t => t.ticker === activeTab) || {};
+  const active       = tabs.find(t => t.ticker === activeTab) || {};
   const { stockData, news, verdict, agentOutputs, events, analyzing, loadingStock, error } = active;
 
   return (
@@ -136,7 +125,7 @@ export default function App() {
         onThemeToggle={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
       />
 
-      {/* Ticker tabs bar */}
+      {/* Tabs bar */}
       {tabs.length > 0 && (
         <div className="sticky top-14 z-40 border-b"
           style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)' }}>
@@ -144,7 +133,7 @@ export default function App() {
             {tabs.map(tab => {
               const m = tab.stockData?.market_data;
               const change = m ? ((m.current_price - m.previous_close) / m.previous_close * 100) : null;
-              const isPos = change >= 0;
+              const isPos   = change >= 0;
               const isActive = activeTab === tab.ticker;
 
               return (
@@ -157,115 +146,136 @@ export default function App() {
                   }}
                   onClick={() => setActiveTab(tab.ticker)}
                 >
-                  <span className="text-sm font-medium" style={{ color: isActive ? 'var(--green)' : 'var(--text-secondary)' }}>
-                    {tab.ticker.replace('.NS', '').replace('.BO', '')}
+                  <span className="text-sm font-medium"
+                    style={{ color: isActive ? 'var(--green)' : 'var(--text-secondary)' }}>
+                    {tab.ticker.replace('.NS','').replace('.BO','')}
                   </span>
 
                   {change !== null && (
-                    <span className="text-xs font-mono" style={{ color: isPos ? 'var(--green)' : 'var(--red)' }}>
+                    <span className="text-xs font-mono"
+                      style={{ color: isPos ? 'var(--green)' : 'var(--red)' }}>
                       {isPos ? '+' : ''}{change.toFixed(2)}%
                     </span>
                   )}
 
                   {tab.analyzing && (
-                    <div className="w-3 h-3 rounded-full border border-[var(--amber)] border-t-transparent animate-spin"/>
+                    <div className="w-3 h-3 rounded-full border border-t-transparent animate-spin"
+                      style={{ borderColor: 'var(--amber)', borderTopColor: 'transparent' }}/>
                   )}
 
                   {tab.verdict && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded font-bold"
-                      style={{
-                        background: tab.verdict.verdict === 'BUY' ? 'var(--green-dim)'
-                          : tab.verdict.verdict === 'SELL' ? 'var(--red-dim)' : 'var(--amber-dim)',
-                        color: tab.verdict.verdict === 'BUY' ? 'var(--green)'
-                          : tab.verdict.verdict === 'SELL' ? 'var(--red)' : 'var(--amber)',
-                      }}>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded font-bold" style={{
+                      background: tab.verdict.verdict === 'BUY' ? 'var(--green-dim)'
+                        : tab.verdict.verdict === 'SELL' ? 'var(--red-dim)' : 'var(--amber-dim)',
+                      color: tab.verdict.verdict === 'BUY' ? 'var(--green)'
+                        : tab.verdict.verdict === 'SELL' ? 'var(--red)' : 'var(--amber)',
+                    }}>
                       {tab.verdict.verdict}
                     </span>
                   )}
 
                   <span
-                    className="text-xs ml-1 hover:text-[var(--red)] transition-colors"
+                    className="text-xs ml-1 transition-colors"
                     style={{ color: 'var(--text-tertiary)' }}
+                    onMouseEnter={e => e.currentTarget.style.color = 'var(--red)'}
+                    onMouseLeave={e => e.currentTarget.style.color = 'var(--text-tertiary)'}
                     onClick={e => { e.stopPropagation(); closeTab(tab.ticker); }}
                   >×</span>
                 </div>
               );
             })}
+
+            {/* Home button when tabs are open */}
+            <button
+              onClick={() => setActiveTab(null)}
+              className="ml-auto px-3 py-3 text-xs transition-colors shrink-0"
+              style={{ color: activeTab === null ? 'var(--green)' : 'var(--text-tertiary)' }}
+            >
+              ⌂ Home
+            </button>
           </div>
         </div>
       )}
 
       <div className="max-w-[1400px] mx-auto px-4 lg:px-6 py-6">
 
-        {/* Landing — no tabs open */}
-        {tabs.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-24 animate-fade-in">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#00C896] to-[#0080FF] flex items-center justify-center mb-6"
-              style={{ boxShadow: '0 20px 60px rgba(0,200,150,0.3)' }}>
-              <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-                <path d="M14 3L25 8V20L14 25L3 20V8L14 3Z" stroke="white" strokeWidth="2" fill="none"/>
-                <path d="M14 10L18 14L14 18L10 14L14 10Z" fill="white"/>
-              </svg>
+        {/* Landing / Heatmap — shown when no active tab */}
+        {!activeTab && (
+          <div className="animate-fade-in">
+
+            {/* Hero */}
+            <div className="flex flex-col items-center justify-center py-10 mb-8">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#00C896] to-[#0080FF] flex items-center justify-center mb-5"
+                style={{ boxShadow: '0 20px 60px rgba(0,200,150,0.3)' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 2L22 7V17L12 22L2 17V7L12 2Z" stroke="white" strokeWidth="2" fill="none"/>
+                  <path d="M12 8L16 12L12 16L8 12L12 8Z" fill="white"/>
+                </svg>
+              </div>
+              <h1 className="text-3xl font-semibold text-white mb-2 tracking-tight text-center">
+                Bharat Equity Agent
+              </h1>
+              <p className="text-sm text-center max-w-md mb-5 leading-relaxed"
+                style={{ color: 'var(--text-secondary)' }}>
+                8 autonomous AI agents analyze any stock — market data, sentiment, fundamentals,
+                technicals, and risk — synthesized into a professional BUY/HOLD/SELL verdict.
+              </p>
+              <div className="flex items-center gap-4 text-xs mb-6" style={{ color: 'var(--text-tertiary)' }}>
+                {[
+                  { color: 'var(--green)', label: 'CrewAI agents' },
+                  { color: 'var(--accent)', label: 'LangGraph' },
+                  { color: 'var(--amber)', label: 'MCP servers' },
+                  { color: '#A78BFA',      label: 'LangSmith' },
+                ].map(({ color, label }) => (
+                  <span key={label} className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: color }}/>
+                    {label}
+                  </span>
+                ))}
+              </div>
+
+              {/* Quick search buttons */}
+              <div className="flex flex-wrap gap-2 justify-center">
+                {POPULAR_TICKERS.map(t => (
+                  <button
+                    key={t.symbol}
+                    onClick={() => analyze(t.symbol)}
+                    className="px-4 py-2 rounded-xl border text-sm font-medium transition-all duration-150"
+                    style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)', background: 'var(--bg-card)' }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.borderColor = 'var(--green)';
+                      e.currentTarget.style.color = 'var(--green)';
+                      e.currentTarget.style.background = 'var(--green-dim)';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.borderColor = 'var(--border)';
+                      e.currentTarget.style.color = 'var(--text-secondary)';
+                      e.currentTarget.style.background = 'var(--bg-card)';
+                    }}
+                  >
+                    {t.name}
+                    <span className="ml-1.5 text-xs" style={{ color: 'var(--text-tertiary)' }}>{t.exchange}</span>
+                  </button>
+                ))}
+              </div>
             </div>
-            <h1 className="text-3xl font-semibold text-white mb-3 tracking-tight text-center">
-              Bharat Equity Agent
-            </h1>
-            <p className="text-sm text-center max-w-md mb-3 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-              8 autonomous AI agents analyze any stock — market data, sentiment, fundamentals, technicals, and risk — and produce a BUY/HOLD/SELL verdict with confidence score and critic validation.
-            </p>
-            <div className="flex items-center gap-4 mb-10 text-xs" style={{ color: 'var(--text-tertiary)' }}>
-              <span className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--green)]"/>CrewAI agents
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]"/>LangGraph
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--amber)]"/>MCP servers
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#A78BFA' }}/>LangSmith
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-2 justify-center">
-              {POPULAR_TICKERS.map(t => (
-                <button
-                  key={t.symbol}
-                  onClick={() => analyze(t.symbol)}
-                  className="px-4 py-2 rounded-xl border text-sm font-medium transition-all"
-                  style={{
-                    borderColor: 'var(--border)',
-                    color: 'var(--text-secondary)',
-                    background: 'var(--bg-card)',
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.borderColor = 'var(--green)';
-                    e.currentTarget.style.color = 'var(--green)';
-                    e.currentTarget.style.background = 'var(--green-dim)';
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.borderColor = 'var(--border)';
-                    e.currentTarget.style.color = 'var(--text-secondary)';
-                    e.currentTarget.style.background = 'var(--bg-card)';
-                  }}
-                >
-                  {t.name}
-                  <span className="ml-1.5 text-xs" style={{ color: 'var(--text-tertiary)' }}>{t.exchange}</span>
-                </button>
-              ))}
+
+            {/* Heatmap */}
+            <div className="rounded-2xl p-6 border" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+              <Heatmap onSelectStock={analyze} />
             </div>
           </div>
         )}
 
         {/* Error */}
-        {error && (
+        {error && activeTab && (
           <div className="mb-4 p-4 rounded-xl border text-sm animate-slide-up"
             style={{ borderColor: 'var(--red)', background: 'var(--red-dim)', color: 'var(--red)' }}>
             ⚠ {error}
           </div>
         )}
 
-        {/* Main dashboard — active tab */}
+        {/* Main dashboard */}
         {activeTab && (
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-5">
 
@@ -281,7 +291,6 @@ export default function App() {
             <div className="space-y-5">
               <AgentFeed events={events || []} analyzing={analyzing} />
 
-              {/* Analysis progress */}
               {analyzing && !verdict && (
                 <div className="rounded-2xl p-5 border animate-fade-in"
                   style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
@@ -322,11 +331,7 @@ export default function App() {
         )}
       </div>
 
-      {/* Chatbot */}
-      {activeTab && (
-        <Chatbot ticker={activeTab} hasAnalysis={!!verdict} />
-      )}
-
+      {activeTab && <Chatbot ticker={activeTab} hasAnalysis={!!verdict} />}
     </div>
   );
 }
