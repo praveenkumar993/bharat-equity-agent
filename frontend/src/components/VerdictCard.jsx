@@ -1,4 +1,4 @@
-export default function VerdictCard({ verdict, agentOutputs, loading }) {
+export default function VerdictCard({ verdict, agentOutputs, loading, ticker }) {
   if (loading) return (
     <div className="rounded-2xl p-5 bg-[var(--bg-card)] border border-border">
       <div className="skeleton h-6 w-32 mb-4"/>
@@ -123,6 +123,35 @@ export default function VerdictCard({ verdict, agentOutputs, loading }) {
           Synthesized from 6 agents · LangGraph orchestration · CrewAI
         </div>
       </div>
+      {/* Export PDF */}
+      <button
+        onClick={() => window.open(
+          `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/export/${ticker}`,
+          '_blank'
+        )}
+        className="mt-4 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-medium transition-all"
+        style={{
+          borderColor: 'var(--border)',
+          color: 'var(--text-secondary)',
+          background: 'transparent',
+        }}
+        onMouseEnter={e => {
+          e.currentTarget.style.borderColor = 'var(--green)';
+          e.currentTarget.style.color = 'var(--green)';
+          e.currentTarget.style.background = 'var(--green-dim)';
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.borderColor = 'var(--border)';
+          e.currentTarget.style.color = 'var(--text-secondary)';
+          e.currentTarget.style.background = 'transparent';
+        }}
+      >
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path d="M7 1V9M7 9L4 6M7 9L10 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          <path d="M2 11H12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
+        Export PDF Research Report
+      </button>
     </div>
   );
 }
