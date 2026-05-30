@@ -277,7 +277,7 @@ export default function App() {
 
         {/* Main dashboard */}
         {activeTab && (
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-5">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-5 items-start">
 
             {/* Left */}
             <div className="space-y-5">
