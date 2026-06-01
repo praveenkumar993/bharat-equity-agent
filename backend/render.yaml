@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: bharat-equity-agent-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install --upgrade pip && pip install fastapi uvicorn websockets python-dotenv httpx aiohttp pydantic crewai crewai-tools langchain langchain-groq langgraph langsmith groq yfinance pandas ta tavily-python mem0ai fastmcp reportlab matplotlib python-multipart requests && pip install torch --index-url https://download.pytorch.org/whl/cpu
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: ENVIRONMENT
+        value: production
