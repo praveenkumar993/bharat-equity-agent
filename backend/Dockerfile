@@ -14,8 +14,12 @@ COPY requirements.txt .
 
 RUN pip install --no-cache-dir --upgrade pip
 
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+# Install torch CPU only first — separate layer
+RUN pip install --no-cache-dir \
+    torch==2.2.0 \
+    --index-url https://download.pytorch.org/whl/cpu
 
+# Install everything else
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
