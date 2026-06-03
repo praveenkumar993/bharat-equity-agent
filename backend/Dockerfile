@@ -3,24 +3,26 @@ FROM python:3.12-slim
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y \
-    gcc \
-    g++ \
-    libffi-dev \
-    libssl-dev \
-    curl \
+    gcc g++ libffi-dev libssl-dev curl \
     && rm -rf /var/lib/apt/lists/*
-
-COPY requirements.txt .
 
 RUN pip install --no-cache-dir --upgrade pip
 
-# Install torch CPU only first — separate layer
 RUN pip install --no-cache-dir \
     torch==2.2.0 \
     --index-url https://download.pytorch.org/whl/cpu
 
-# Install everything else
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir \
+    "crewai==1.14.5"
+
+RUN pip install --no-cache-dir \
+    fastapi uvicorn websockets python-dotenv \
+    httpx aiohttp pydantic \
+    langchain langchain-groq langgraph langsmith \
+    groq yfinance pandas ta \
+    tavily-python fastmcp \
+    reportlab matplotlib \
+    python-multipart requests mem0ai
 
 COPY . .
 
