@@ -8,41 +8,38 @@ RUN apt-get update && apt-get install -y \
 
 RUN pip install --no-cache-dir --upgrade pip
 
-# Install torch CPU only
+# Install torch CPU only — separate because it needs special index
 RUN pip install --no-cache-dir \
     torch==2.2.0 \
     --index-url https://download.pytorch.org/whl/cpu
 
-# Install litellm first — crewai depends on it
-RUN pip install --no-cache-dir litellm
-
-# Install crewai with litellm extra
-RUN pip install --no-cache-dir "crewai[litellm]==1.14.5"
-
-# Install everything else
+# Install ALL packages in one shot so pip resolves conflicts together
 RUN pip install --no-cache-dir \
-    fastapi \
-    uvicorn \
-    websockets \
-    python-dotenv \
-    httpx \
-    aiohttp \
-    pydantic \
-    langchain \
-    langchain-groq \
-    langgraph \
-    langsmith \
-    groq \
-    yfinance \
-    pandas \
-    ta \
-    tavily-python \
-    fastmcp \
-    reportlab \
-    matplotlib \
-    python-multipart \
-    requests \
-    mem0ai
+    "crewai==1.14.5" \
+    "litellm" \
+    "openai" \
+    "python-dotenv" \
+    "fastapi" \
+    "uvicorn" \
+    "websockets" \
+    "httpx" \
+    "aiohttp" \
+    "pydantic" \
+    "langchain" \
+    "langchain-groq" \
+    "langgraph" \
+    "langsmith" \
+    "groq" \
+    "yfinance" \
+    "pandas" \
+    "ta" \
+    "tavily-python" \
+    "fastmcp" \
+    "reportlab" \
+    "matplotlib" \
+    "python-multipart" \
+    "requests" \
+    "mem0ai"
 
 COPY . .
 
